@@ -1,3 +1,72 @@
+#summary Example of zstream usage
+
+= Introduction =
+
+Zipstream aims to provide and easy way to access ZIP files along with zlib in a C++ object oriented style to allow you - well, me also - to integrate ZIP files into 
+your application as you were accessing a normal file.
+
+You know, because there is a lot of advantages of using a compressed system with random access as a virtual drive for your apps'.
+
+1) The first step is to create a zlib wrapper, and it's almost done. 
+
+2) Then I'll have to write one, two or three classes to access the ZIP files, but take it easy, you could help also.
+
+3) Documentation is necessary.
+
+This is an easy example of zstream usage:
+
+zippy.h
+
+{{{
+
+/**
+* Copyright 2011 Victor Egea Hernando
+*
+* Zipstream is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, version 3 of the License.
+*
+* Zipstream is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with Zipstream.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef ZIPPY_H_
+#define ZIPPY_H_
+
+#include <extra/zipstream/zstream.h>
+#include <fstream>
+
+class zippy{
+
+private:
+    // instance
+    static zippy *_instance;
+
+public:
+	// main entry
+	int main( int argc, char *argv[] );
+    // get instance
+    static zippy &get();
+
+private:
+    // print options
+    void print_options( void );
+
+};
+
+#endif //ZIPPY_H_
+
+
+}}}
+
+zippy.cpp
+
+{{{
 /**
 * Copyright 2011 Victor Egea Hernando
 *
@@ -84,3 +153,5 @@ int zippy::main(int argc, char*argv[]){
 int main( int argc, char *argv[] ){
 	return zippy::get().main( argc, argv );
 }
+
+}}}
