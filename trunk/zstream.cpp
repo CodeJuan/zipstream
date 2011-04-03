@@ -76,7 +76,9 @@ void zstream::inits( zconf::int32 level ){
 	_obuffer = new zconf::byte[ _ozsize ];
 
 	// set offsets and other counters
-	_zoffset = 0; _roffset = 0; _rndata = 0; _gcount = 0;
+	_zoffset = _roffset = _rndata = 0;
+	// bytes treated
+	_gcount = _tcount = 0;
 }
 
 zstream &zstream::open( zconf::bytep data, zconf::uint32 size,
@@ -134,8 +136,8 @@ zconf::uint64 zstream::gcount( void ) const{
 	return _gcount;
 }
 
-zconf::uint64 zstream::zoffset( void ) const{
-	return _zoffset;
+zconf::uint64 zstream::tcount( void ) const{
+	return _tcount;
 }
 
 zconf::uint32 zstream::flags( void ) const{
@@ -185,14 +187,20 @@ zstream &zstream::read( zconf::cbytep data, zconf::uint64 nbytes ){
 	// copy remaining data
 	if( _rndata ){
 		// calculate size to copy
-		zconf::uint64 size = ( _rndata <= nbytes ) ? nbytes : _rndata;
+		zconf::uint64 size = ( nbytes < _rndata ) ? nbytes : _rndata;
 		// copy to data
-		std::memcpy( data, _obuffer + _roffset, size );
+		std::memcpy( data, _obuffer + _roffset - _rndata, size );
 		// increase gcount and decrease remaining data offset
-		_gcount += size; _roffset += size;
-		_zoffset += size; _rndata -= size;
+		_tcount += size; _gcount += size;
+		_rndata -= size; _zoffset += size;
+
 		// return object reference if it's done
-		if( _gcount == nbytes ) return *this;  // SUCCESS
+		if( _gcount == nbytes ) {
+			// check eof
+			if( _zoffset >= _size  ) _flags |= feof;
+			// return object reference
+			return *this;  // SUCCESS
+		}
 	}
 
 	// inflate stream
@@ -260,17 +268,19 @@ zstream &zstream::read( zconf::cbytep data, zconf::uint64 nbytes ){
 			zconf::uint64 size = nbytes - _gcount;
 			// copy the final data
 			memcpy( data + _gcount, _obuffer, size );
+			// check eof
+			if( _zoffset >= _size  ) _flags |= feof;
 			// refresh remaining data values
 			_rndata = have - size; _roffset = have;
 			// refresh gcount
-			_gcount += size;
+			_gcount += size; _tcount += size;
 			// it's done
 			return *this; // SUCCESS
 		}else{
 			// copy data
 			memcpy( data + _gcount, _obuffer, have );
 			// refresh gcount
-			_gcount += have;
+			_gcount += have; _tcount += have;
 		}
 	}while( _zstream.avail_out == 0 );
 }
@@ -280,7 +290,7 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 	_gcount = 0;
 
 	// check end of file
-	if( _ios == 0 && _data == 0 ) return *this;
+	if( _flags & feof || ( _ios == 0 && _data == 0 ) ) return *this;
 	// check mode
 	if( _flags & frio ){
 		_error = "zstream: is set to write into the buffer";
@@ -317,7 +327,7 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 			std::memcpy( _data + _zoffset, _obuffer, have );
 		}
 		// number of bytes written
-		_gcount += have; _zoffset += have;
+		_gcount += nbytes; _tcount += nbytes; _zoffset += have;
 	}while( _zstream.avail_out == 0 );
 
 	// return object
@@ -337,8 +347,10 @@ zstream &zstream::flush( void ){
 	// reset _gcount
 	_gcount = 0;
 
-	// check buffers
-	if( _ios == 0 && _data == 0 ) return *this;
+	// check end of file
+	if( _flags & feof || ( _ios == 0 && _data == 0 ) ) return *this;
+	// check eof
+	if( _flags & feof ) return *this;
 	// check mode
 	if( _flags & frio ){
 		_error = "zstream: is set to write into the buffer";
@@ -376,7 +388,7 @@ zstream &zstream::flush( void ){
 			std::memcpy( _data + _zoffset, _obuffer, have );
 		}
 		// number of bytes written
-		_gcount += have; _zoffset += have;
+		_zoffset += have;
 	} while( _zstream.avail_out == 0 );
 
 	// return reference

@@ -30,9 +30,9 @@ public:
 	zstream &read( zconf::cbytep data, zconf::uint64 nbytes );
 	// write n bytes on data
 	zstream &write( zconf::cbytep data, zconf::uint64 nbytes );
-	// bytes of compression treated
-	zconf::uint64 zoffset( void ) const;
-	// number of bytes read in the last input operation
+	// number of bytes treated since the opening
+	zconf::uint64 tcount( void ) const;
+	// number of bytes treated in the last operation
 	zconf::uint64 gcount( void ) const;
 	// get active flags
 	zconf::uint32 flags( void ) const;
@@ -48,7 +48,7 @@ public:
 private:
 	// number of bytes read in the last operation
 	// & bytes of compression treated
-	zconf::uint64 _gcount, _zoffset;
+	zconf::uint64 _gcount, _tcount, _zoffset;
 	// zstream buffers
 	zconf::bytep _obuffer, _ibuffer;
 	// zstream buffer size
