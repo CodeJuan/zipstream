@@ -1,0 +1,90 @@
+{{{
+
+/**
+* Copyright 2011 Victor Egea Hernando
+*
+* Zipstream is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, version 3 of the License.
+*
+* Zipstream is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with Zipstream.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "zippy.h"
+
+#include <sstream>
+
+zippy *zippy::_instance = 0;
+
+zippy &zippy::get(){
+    if( _instance == 0 ){
+        _instance = new zippy();
+    }
+    return *_instance;
+}
+
+int zippy::main(int argc, char*argv[]){
+	zstream zs;
+	// 10 KBytes of data buffer
+	zconf::bytep datab = new zconf::byte[ 1 << 20 ];
+	// open zstream
+	zs.open( datab, 1 << 20, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	// create string to inflate
+	std::string data;
+	for(int i=0;i<1000;i++) {
+		std::stringstream ss;
+		ss << i << ": Hello World!!" << std::endl;
+		data += ss.str();
+	}
+	// write to the stream
+	zs.write( (zconf::cbytep) data.c_str(), data.length() );
+	// check for errors
+	if( zs.flags() & zstream::ferr ){
+		std::cout << zs.error() << std::endl;
+		return 1;
+	}
+	// get number of bytes written
+	zconf::uint64 tcount = zs.tcount();
+	// close buffer
+	zs.close();
+
+	// open zstream to read the buffer
+	zs.open( datab, 1 << 20, zstream::frio );
+
+	while( zs.tcount() < tcount ){
+		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
+		// buffer to read some data
+		char output[ 1 << 10 ];
+		// read the bytes compressed before
+		zs.read( (zconf::cbytep) output, 1 << 10 );
+		// check for errors
+		if( zs.flags() & zstream::ferr ){
+			std::cout << zs.error() << std::endl;
+			return 1;
+		}else{
+			// print output
+			output[ zs.gcount() ] = '\0';
+			std::cout << "output: " << std::endl << output << std::endl;
+		}
+	}
+	// close stream again
+	zs.close();
+
+	// ...
+	std::cout << data.length() << " bytes compressed to ";
+	std::cout << tcount        << " bytes" << std::endl;
+
+	return 0;
+}
+
+int main( int argc, char *argv[] ){
+	return zippy::get().main( argc, argv );
+}
+
+}}}
