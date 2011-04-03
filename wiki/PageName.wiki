@@ -67,7 +67,6 @@ private:
 zippy.cpp
 
 {{{
-
 /**
 * Copyright 2011 Victor Egea Hernando
 *
@@ -99,13 +98,13 @@ zippy &zippy::get(){
 
 int zippy::main(int argc, char*argv[]){
 	zstream zs;
-	// 10 KBytes of data buffer
-	zconf::bytep datab = new zconf::byte[ 1 << 20 ];
+	// 16 KB of data buffer
+	zconf::bytep datab = new zconf::byte[ 1 << 14 ];
 	// open zstream
-	zs.open( datab, 1 << 20, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	zs.open( datab, 1 << 14, zstream::fwio, Z_DEFAULT_COMPRESSION );
 	// create string to inflate
 	std::string data;
-	for(int i=0;i<1000;i++) {
+	for(int i=0;i<100;i++) {
 		std::stringstream ss;
 		ss << i << ": Hello World!!" << std::endl;
 		data += ss.str();
@@ -123,7 +122,7 @@ int zippy::main(int argc, char*argv[]){
 	zs.close();
 
 	// open zstream to read the buffer
-	zs.open( datab, 1 << 20, zstream::frio );
+	zs.open( datab, 1 << 14, zstream::frio );
 
 	while( zs.tcount() < tcount ){
 		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
