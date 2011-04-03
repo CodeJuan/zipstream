@@ -99,12 +99,12 @@ zippy &zippy::get(){
 int zippy::main(int argc, char*argv[]){
 	zstream zs;
 	// 16 KB of data buffer
-	zconf::bytep datab = new zconf::byte[ 1 << 14 ];
+	zconf::bytep datab = new zconf::byte[ 1 << 16 ];
 	// open zstream
-	zs.open( datab, 1 << 14, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	zs.open( datab, 1 << 16, zstream::fwio, Z_DEFAULT_COMPRESSION );
 	// create string to inflate
 	std::string data;
-	for(int i=0;i<100;i++) {
+	for(int i=0;i<1000;i++) {
 		std::stringstream ss;
 		ss << i << ": Hello World!!" << std::endl;
 		data += ss.str();
@@ -121,8 +121,12 @@ int zippy::main(int argc, char*argv[]){
 	// close buffer
 	zs.close();
 
+	// ...
+	std::cout << data.length() << " bytes compressed to ";
+	std::cout << zs.zoffset()  << " bytes" << std::endl;
+
 	// open zstream to read the buffer
-	zs.open( datab, 1 << 14, zstream::frio );
+	zs.open( datab, 1 << 16, zstream::frio );
 
 	while( zs.tcount() < tcount ){
 		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
@@ -142,10 +146,6 @@ int zippy::main(int argc, char*argv[]){
 	}
 	// close stream again
 	zs.close();
-
-	// ...
-	std::cout << data.length() << " bytes compressed to ";
-	std::cout << tcount        << " bytes" << std::endl;
 
 	return 0;
 }
