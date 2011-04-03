@@ -48,6 +48,8 @@ public:
 	zstream &write( zconf::cbytep data, zconf::uint64 nbytes );
 	// number of bytes treated since the opening
 	zconf::uint64 tcount( void ) const;
+	// data buffer offset
+	zconf::uint64 zoffset( void ) const;
 	// number of bytes treated in the last operation
 	zconf::uint64 gcount( void ) const;
 	// get active flags
