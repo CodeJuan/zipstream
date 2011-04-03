@@ -38,8 +38,7 @@ zippy.h
 #ifndef ZIPPY_H_
 #define ZIPPY_H_
 
-#include <extra/zipstream/zstream.h>
-#include <fstream>
+#include <zstream.h>
 
 class zippy{
 
@@ -86,6 +85,7 @@ zippy.cpp
 #include "zippy.h"
 
 #include <sstream>
+#include <fstream>
 
 zippy *zippy::_instance = 0;
 
@@ -109,7 +109,7 @@ int zippy::main(int argc, char*argv[]){
 		ss << i << ": Hello World!!" << std::endl;
 		data += ss.str();
 	}
-	// write to the stream
+	// write to the stream at once.. brutal!! but it's an example
 	zs.write( (zconf::cbytep) data.c_str(), data.length() );
 	// check for errors
 	if( zs.flags() & zstream::ferr ){
