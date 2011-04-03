@@ -156,6 +156,10 @@ zconf::uint64 zstream::tcount( void ) const{
 	return _tcount;
 }
 
+zconf::uint64 zstream::zoffset( void ) const{
+	return _zoffset;
+}
+
 zconf::uint32 zstream::flags( void ) const{
 	return _flags;
 }
