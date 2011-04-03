@@ -294,7 +294,6 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 	_zstream.avail_in = nbytes;
 	_zstream.next_in  = reinterpret_cast<Bytef*>( data );
 
-	std::cout << "Hi, ";
 	do{
 		// zstream output
 		_zstream.avail_out = _ozsize;
