@@ -85,7 +85,6 @@ zippy.cpp
 #include "zippy.h"
 
 #include <sstream>
-#include <fstream>
 
 zippy *zippy::_instance = 0;
 
@@ -97,6 +96,9 @@ zippy &zippy::get(){
 }
 
 int zippy::main(int argc, char*argv[]){
+	/*
+	 * Buffer streaming
+	 */
 	zstream zs;
 	// 64 KB of data buffer
 	zconf::bytep datab = new zconf::byte[ 1 << 16 ];
@@ -104,34 +106,77 @@ int zippy::main(int argc, char*argv[]){
 	zs.open( datab, 1 << 16, zstream::fwio, Z_DEFAULT_COMPRESSION );
 	// create string to deflate
 	std::string data;
-	for(int i=0;i<1000;i++) {
+	// buffer of data
+	char output[ 1 << 10 ];
+	// write to the stream
+	for( int i=0; i < 1000; i++ ){
 		std::stringstream ss;
 		ss << i << ": Hello World!!" << std::endl;
-		data += ss.str();
-	}
-	// write to the stream at once.. brutal!! but it's an example
-	zs.write( (zconf::cbytep) data.c_str(), data.length() );
-	// check for errors
-	if( zs.flags() & zstream::ferr ){
-		std::cout << zs.error() << std::endl;
-		return 1;
+		zs.write( (zconf::cbytep) ss.str().c_str(), ss.str().length() );
+		// check for errors
+		if( zs.flags() & zstream::ferr ){
+			std::cout << zs.error() << std::endl;
+			return 1;
+		}
 	}
 	// get number of bytes written
 	zconf::uint64 tcount = zs.tcount();
 	// close buffer
 	zs.close();
 
-	// ...
-	std::cout << data.length() << " bytes compressed to ";
-	std::cout << zs.zoffset()  << " bytes" << std::endl;
+	// open zstream to read the buffer
+	zs.open( datab, 1 << 16, zstream::frio );
+
+	while( zs.tcount() < tcount ){
+		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
+		// read the bytes compressed before
+		zs.read( (zconf::cbytep) output, 1 << 10 );
+		// check for errors
+		if( zs.flags() & zstream::ferr ){
+			std::cout << zs.error() << std::endl;
+			return 1;
+		}else{
+			// print output
+			output[ zs.gcount() ] = '\0';
+			std::cout << "output: " << std::endl << output << std::endl;
+		}
+	}
+	// close stream again
+	zs.close();
+
+	/*
+	 * Iostream streaming
+	 */
+	// open zstream
+	std::fstream ios;
+	ios.open( "zstreamtest.txt", std::fstream::out );
+	// check for errors
+	if( !ios.is_open() ){
+		std::cout << "error: fstream is not open" << std::endl;
+		return 1;
+	}
+	zs.open( ios, 0, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	// write to the stream
+	for( int i=0; i < 1000; i++ ){
+		std::stringstream ss;
+		ss << i << ": Hello World!!" << std::endl;
+		zs.write( (zconf::cbytep) ss.str().c_str(), ss.str().length() );
+		// check for errors
+		if( zs.flags() & zstream::ferr ){
+			std::cout << zs.error() << std::endl;
+			return 1;
+		}
+	}
+	// get number of bytes written
+	tcount = zs.tcount();
+	// close buffer
+	zs.close();
 
 	// open zstream to read the buffer
 	zs.open( datab, 1 << 16, zstream::frio );
 
 	while( zs.tcount() < tcount ){
 		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
-		// buffer to read some data
-		char output[ 1 << 10 ];
 		// read the bytes compressed before
 		zs.read( (zconf::cbytep) output, 1 << 10 );
 		// check for errors
