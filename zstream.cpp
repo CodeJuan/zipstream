@@ -20,8 +20,8 @@
 
 typedef struct zstream::core {
 	// number of bytes read in the last operation
-	// & bytes of compression treated
-	zconf::uint64 _gcount, _tcount, _zoffset;
+	// & bytes of compression treated ( initial & current )
+	zconf::uint64 _gcount, _tcount, _izoffset, _zoffset;
 	// zstream buffers
 	zconf::bytep _obuffer, _ibuffer;
 	// zstream buffer size
@@ -47,12 +47,10 @@ zstream::zstream( void ){
 	_core = new core;
 	// set values to zero
 	_core->_flags = 0; _core->_data = 0; _core->_ios = 0;
-	_core->_obuffer = 0; _core->_ozsize = ZCOBSIZE;
-	_core->_ibuffer = 0; _core->_izsize = ZCIBSIZE;
 }
 
 zstream::~zstream( void ){
-	delete _core;
+	close(); delete _core;
 }
 
 zstream::zstream( zconf::bytep data, zconf::uint32 size, zconf::uint32 flags, zconf::int32 level ){
@@ -60,23 +58,20 @@ zstream::zstream( zconf::bytep data, zconf::uint32 size, zconf::uint32 flags, zc
 	_core = new core;
 	// set values to zero
 	_core->_flags = 0; _core->_data = 0; _core->_ios = 0;
-	_core->_obuffer = 0; _core->_ozsize = ZCOBSIZE;
-	_core->_ibuffer = 0; _core->_izsize = ZCIBSIZE;
 
 	// open buffer
 	open( data, size, flags );
 }
 
-zstream::zstream( std::iostream &ios, zconf::uint64 offset, zconf::uint32 flags, zconf::int32 level ){
+zstream::zstream( std::iostream &ios, zconf::uint32 size,
+		zconf::uint64 offset, zconf::uint32 flags, zconf::int32 level ){
 	// init core structure
 	_core = new core;
 	// set values to zero
 	_core->_flags = 0; _core->_data = 0; _core->_ios = 0;
-	_core->_obuffer = 0; _core->_ozsize = ZCOBSIZE;
-	_core->_ibuffer = 0; _core->_izsize = ZCIBSIZE;
 
 	// open buffer
-	open( ios, offset, flags );
+	open( ios, size, offset, flags );
 }
 
 // initialize opening
@@ -84,17 +79,21 @@ void zstream::inits( zconf::int32 level ){
 	// check input sources
 	if( _core->_ios != 0 || _core->_data != 0 ){
 		_core->_error = "zstream: is already open";
-		close(); _core->_flags |= ferr;
+		 _core->_flags |= ferr;
 	}else{
 		// check flags
-		if( ( _core->_flags & fwio ) && ( _core->_flags & frio ) ){
+		if( ( ( _core->_flags & ( fwio | frio ) ) == ( fwio | frio ) ) ){
 			_core->_error = "zstream: can not read and write at the same time";
-			close(); _core->_flags |= ferr;
+			_core->_flags |= ferr;
 		}else if( _core->_flags & ( ferr | feof ) ){
 			_core->_error = "zstream: you can not set the 'err' or 'eof' flag";
-			close(); _core->_flags |= ferr;
+			_core->_flags |= ferr;
 		}
 	}
+
+	// init buffers to zero
+	_core->_obuffer = 0; _core->_ozsize = ZCOBSIZE;
+	_core->_ibuffer = 0; _core->_izsize = ZCIBSIZE;
 
 	// allocate zstream state
 	_core->_zstream.zalloc = Z_NULL;
@@ -109,24 +108,21 @@ void zstream::inits( zconf::int32 level ){
 		// init inflate
 		if ( inflateInit( &_core->_zstream ) != Z_OK ){
 			_core->_error = "zstream: zlib error";
-			close(); _core->_flags |= ferr;
-		}
-		// create buffers
-		if( _core->_ios != 0 ) {
-			_core->_ibuffer = new zconf::byte[ _core->_izsize ];
+			 _core->_flags |= ferr;
 		}
 	}else{
 		// allocate deflate state
 		if ( deflateInit( &_core->_zstream, level ) != Z_OK ){
 			_core->_error = "zstream: zlib error";
-			close(); _core->_flags |= ferr;
+			 _core->_flags |= ferr;
 		}
 	}
 	// create buffers
+	_core->_ibuffer = new zconf::byte[ _core->_izsize ];
 	_core->_obuffer = new zconf::byte[ _core->_ozsize ];
 
 	// set offsets and other counters
-	_core->_zoffset = _core->_roffset = _core->_rndata = 0;
+	_core->_roffset = _core->_rndata = 0;
 	// bytes treated
 	_core->_gcount = _core->_tcount = 0;
 }
@@ -134,29 +130,21 @@ void zstream::inits( zconf::int32 level ){
 zstream &zstream::open( zconf::bytep data, zconf::uint32 size,
 		zconf::uint32 flags, zconf::int32 level ){
 	// set values
-	_core->_size = size; _core->_flags = flags; _core->_zoffset = 0;
+	_core->_size = size; _core->_flags = flags;
+	_core->_izoffset = _core->_zoffset = 0;
 	// check opening
 	inits( level ); _core->_data = data;
 	// return reference
 	return *this;
 }
 
-zstream &zstream::open( std::iostream &ios, zconf::uint64 offset,
-		zconf::uint32 flags, zconf::int32 level ){
+zstream &zstream::open( std::iostream &ios, zconf::uint32 size,
+		zconf::uint64 offset, zconf::uint32 flags, zconf::int32 level ){
 	// set values
-	_core->_flags = flags; _core->_zoffset = offset;
+	_core->_size = size; _core->_flags = flags;
+	_core->_izoffset = _core->_zoffset = offset;
 	// check opening
 	inits( level ); _core->_ios = &ios;
-	// check offset
-	if( !( _core->_flags & ferr ) ){
-		// seek file
-		_core->_ios->seekg( std::ios_base::beg, (std::iostream::seekdir) offset );
-		// check it out
-		if( _core->_ios->rdstate() & ( std::iostream::failbit | std::iostream::badbit ) ){
-			_core->_error = "zstream: wasn't able to apply the offset";
-			close(); _core->_flags |= ferr;
-		}
-	}
 	// return reference
 	return *this;
 }
@@ -170,13 +158,15 @@ zstream &zstream::close( void ){
 		inflateEnd( &_core->_zstream );
 	}
 	// delete allocated buffers
-	if( _core->_flags & frio && _core->_ios != 0 ){
+	if( _core->_ibuffer != 0 && _core->_ios != 0 ){
 		delete _core->_ibuffer;
 		_core->_ibuffer = 0;
 	}
-	// delete allocated buffers
-	delete _core->_obuffer;
-	_core->_obuffer = 0;
+	if( _core->_obuffer != 0 ){
+		// delete allocated buffers
+		delete _core->_obuffer;
+		_core->_obuffer = 0;
+	}
 	// reset pointers
 	_core->_data = 0; _core->_ios = 0;
 }
@@ -213,15 +203,22 @@ void zstream::seekoffset( void ){
 	if( _core->_ios != 0 ){
 		// check end of buffer
 		if( _core->_ios->eof() ) {
-			_core->_error = "zstream: has reached iostream eof without getting zstream eof";
+			_core->_error = "zstream: has reached iostream eof";
 			_core->_flags |= ferr | feof; return;
 		}
+
 		// seek file
-		_core->_ios->seekg( std::ios_base::beg, (std::iostream::seekdir) _core->_zoffset );
+		if( _core->_ios != 0 ){
+			// PUT POINTER
+			_core->_ios->seekp( _core->_zoffset, std::ios::beg );
+		}else{
+			// GET POINTER
+			_core->_ios->seekg( _core->_zoffset, std::ios::beg );
+		}
 		// check it out
 		if( _core->_ios->rdstate() & ( std::iostream::failbit | std::iostream::badbit ) ){
 			_core->_error = "zstream: wasn't able to apply the offset";
-			close(); _core->_flags |= ferr; return;
+			_core->_flags |= ferr; return;
 		}
 	}
 }
@@ -230,21 +227,25 @@ zstream &zstream::read( zconf::cbytep data, zconf::uint64 nbytes ){
 	// reset _core->_gcount
 	_core->_gcount = 0;
 
-	// check end of file
-	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) return *this;
 	// check mode
 	if( _core->_flags & fwio ){
 		_core->_error = "zstream: is set to read into the buffer";
 		_core->_flags |= ferr; return *this;
 	}
-
-	// go to the actual offset ( for multithreading over the same iostream )
-	seekoffset(); if( _core->_flags & ferr ) return *this;
+	// check end of file
+	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) {
+		return *this;
+	}
 
 	// copy remaining data
 	if( _core->_rndata ){
+		zconf::uint64 size;
 		// calculate size to copy
-		zconf::uint64 size = ( nbytes < _core->_rndata ) ? nbytes : _core->_rndata;
+		if( nbytes < _core->_rndata ){
+			size = nbytes;
+		}else{
+			size = _core->_rndata;
+		}
 		// copy to data
 		std::memcpy( data, _core->_obuffer + _core->_roffset - _core->_rndata, size );
 		// increase gcount and decrease remaining data offset
@@ -253,24 +254,32 @@ zstream &zstream::read( zconf::cbytep data, zconf::uint64 nbytes ){
 
 		// return object reference if it's done
 		if( _core->_gcount == nbytes ) {
-			// check eof
-			if( _core->_zoffset >= _core->_size  ) _core->_flags |= feof;
 			// return object reference
 			return *this;  // SUCCESS
 		}
 	}
+
+	// check eof
+	if( _core->_tcount >= _core->_size ){
+		_core->_flags |= feof; return *this;
+	}
+
+	// go to the actual offset ( for multithreading over the same iostream )
+	seekoffset(); if( _core->_flags & ferr ) return *this;
 
 	// inflate stream
 	do{
 		// check if there's remaining data to inflate in the zstream
 		if( _core->_zstream.avail_out > 0 ){
 			zconf::uint64 isize;
-			// prepare nput buffer
+			// prepare input buffer
 			if( _core->_ios != 0 ){
+				// check end of file
+				if( _core->_ios->eof() ) {
+					_core->_flags |= feof; return *this;
+				}
 				// read input buffer
 				_core->_ios->read( _core->_ibuffer, _core->_izsize );
-				// check end of file
-				if( _core->_ios->eof() ) _core->_flags |= feof;
 				// get the number of bytes read
 				isize = _core->_ios->gcount();
 			}else{
@@ -326,7 +335,9 @@ zstream &zstream::read( zconf::cbytep data, zconf::uint64 nbytes ){
 			// copy the final data
 			memcpy( data + _core->_gcount, _core->_obuffer, size );
 			// check eof
-			if( _core->_zoffset >= _core->_size  ) _core->_flags |= feof;
+			if( _core->_zoffset - _core->_izoffset >= _core->_size ){
+				_core->_flags |= feof;
+			}
 			// refresh remaining data values
 			_core->_rndata = have - size; _core->_roffset = have;
 			// refresh gcount
@@ -347,7 +358,9 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 	_core->_gcount = 0;
 
 	// check end of file
-	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) return *this;
+	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) {
+		return *this;
+	}
 	// check mode
 	if( _core->_flags & frio ){
 		_core->_error = "zstream: is set to write into the buffer";
@@ -376,7 +389,7 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 			_core->_ios->write( reinterpret_cast<zconf::bytep>( _core->_obuffer ), have );
 		}else{
 			// check boundaries
-			if( _core->_zoffset + have >= _core->_size  ){
+			if( _core->_zoffset - _core->_izoffset + have >= _core->_size  ){
 				_core->_error = "zstream: overflow of data buffer";
 				_core->_flags |= ferr; return *this;
 			}
@@ -391,23 +404,14 @@ zstream &zstream::write( const zconf::cbytep data, zconf::uint64 nbytes ){
 	return *this;
 }
 
-zstream &zstream::setbs( zconf::uint64 ibs, zconf::uint64 obs ){
-	if( _core->_ios != 0 || _core->_data != 0 ){
-		_core->_error = "zstream: is already open";
-		close(); _core->_flags |= ferr;
-	}
-	// set buffer sizes
-	_core->_izsize = ibs; _core->_ozsize = obs;
-}
-
 zstream &zstream::flush( void ){
 	// reset _core->_gcount
 	_core->_gcount = 0;
 
 	// check end of file
-	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) return *this;
-	// check eof
-	if( _core->_flags & feof ) return *this;
+	if( _core->_flags & feof || ( _core->_ios == 0 && _core->_data == 0 ) ) {
+		return *this;
+	}
 	// check mode
 	if( _core->_flags & frio ){
 		_core->_error = "zstream: is set to write into the buffer";
@@ -437,7 +441,7 @@ zstream &zstream::flush( void ){
 			_core->_ios->write( reinterpret_cast<zconf::bytep>( _core->_obuffer ), have );
 		}else{
 			// check boundaries
-			if( _core->_zoffset + have >= _core->_size  ){
+			if( _core->_zoffset - _core->_izoffset + have >= _core->_size  ){
 				_core->_error = "zstream: overflow of data buffer";
 				_core->_flags |= ferr; return *this;
 			}
@@ -450,4 +454,13 @@ zstream &zstream::flush( void ){
 
 	// return reference
 	return *this;
+}
+
+zstream &zstream::setbs( zconf::uint64 ibs, zconf::uint64 obs ){
+	if( _core->_ios != 0 || _core->_data != 0 ){
+		_core->_error = "zstream: is already open";
+		 _core->_flags |= ferr;
+	}
+	// set buffer sizes
+	_core->_izsize = ibs; _core->_ozsize = obs;
 }
