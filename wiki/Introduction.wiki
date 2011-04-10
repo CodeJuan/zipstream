@@ -99,11 +99,9 @@ int zippy::main(int argc, char*argv[]){
 	/*
 	 * Buffer streaming
 	 */
-	zstream zs;
 	// 64 KB of data buffer
 	zconf::bytep datab = new zconf::byte[ 1 << 16 ];
-	// open zstream
-	zs.open( datab, 1 << 16, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	zstream zs( datab, 1 << 16, zstream::fwio, Z_DEFAULT_COMPRESSION );
 	// create string to deflate
 	std::string data;
 	// buffer of data
@@ -115,7 +113,7 @@ int zippy::main(int argc, char*argv[]){
 		zs.write( (zconf::cbytep) ss.str().c_str(), ss.str().length() );
 		// check for errors
 		if( zs.flags() & zstream::ferr ){
-			std::cout << zs.error() << std::endl;
+			std::cerr << zs.error() << std::endl;
 			return 1;
 		}
 	}
@@ -133,7 +131,7 @@ int zippy::main(int argc, char*argv[]){
 		zs.read( (zconf::cbytep) output, 1 << 10 );
 		// check for errors
 		if( zs.flags() & zstream::ferr ){
-			std::cout << zs.error() << std::endl;
+			std::cerr << zs.error() << std::endl;
 			return 1;
 		}else{
 			// print output
@@ -148,14 +146,16 @@ int zippy::main(int argc, char*argv[]){
 	 * Iostream streaming
 	 */
 	// open zstream
-	std::fstream ios;
-	ios.open( "zstreamtest.txt", std::fstream::out );
+	std::fstream ios( "zstreamtest.bin", std::ios::out | std::ios::binary );
+	// Fill with some data to apply the offset
+	ios << "SOMEOFFSET";
 	// check for errors
 	if( !ios.is_open() ){
-		std::cout << "error: fstream is not open" << std::endl;
+		std::cerr << "error: fstream is not open" << std::endl;
 		return 1;
 	}
-	zs.open( ios, 0, zstream::fwio, Z_DEFAULT_COMPRESSION );
+	// open the zstream
+	zs.open( ios, 1 << 16, 10, zstream::fwio , Z_DEFAULT_COMPRESSION );
 	// write to the stream
 	for( int i=0; i < 1000; i++ ){
 		std::stringstream ss;
@@ -163,17 +163,18 @@ int zippy::main(int argc, char*argv[]){
 		zs.write( (zconf::cbytep) ss.str().c_str(), ss.str().length() );
 		// check for errors
 		if( zs.flags() & zstream::ferr ){
-			std::cout << zs.error() << std::endl;
+			std::cerr << zs.error() << std::endl;
 			return 1;
 		}
 	}
 	// get number of bytes written
 	tcount = zs.tcount();
 	// close buffer
-	zs.close();
+	zs.close(); ios.close();
 
 	// open zstream to read the buffer
-	zs.open( datab, 1 << 16, zstream::frio );
+	ios.open( "zstreamtest.bin", std::ios::in | std::ios::binary );
+	zs.open( ios, tcount, 10, zstream::frio );
 
 	while( zs.tcount() < tcount ){
 		std::cout << zs.tcount() << ";" <<  tcount << std::endl;
@@ -181,7 +182,7 @@ int zippy::main(int argc, char*argv[]){
 		zs.read( (zconf::cbytep) output, 1 << 10 );
 		// check for errors
 		if( zs.flags() & zstream::ferr ){
-			std::cout << zs.error() << std::endl;
+			std::cerr << zs.error() << std::endl;
 			return 1;
 		}else{
 			// print output
@@ -190,7 +191,7 @@ int zippy::main(int argc, char*argv[]){
 		}
 	}
 	// close stream again
-	zs.close();
+	zs.close(); ios.close();
 
 	return 0;
 }
@@ -198,5 +199,4 @@ int zippy::main(int argc, char*argv[]){
 int main( int argc, char *argv[] ){
 	return zippy::get().main( argc, argv );
 }
-
 }}}
