@@ -147,13 +147,13 @@ int zippy::main(int argc, char*argv[]){
 	 */
 	// open zstream
 	std::fstream ios( "zstreamtest.bin", std::ios::out | std::ios::binary );
-	// Fill with some data to apply the offset
-	ios << "SOMEOFFSET";
 	// check for errors
 	if( !ios.is_open() ){
 		std::cerr << "error: fstream is not open" << std::endl;
 		return 1;
 	}
+	// fill with some data to apply the offset
+	ios << "SOMEOFFSET";
 	// open the zstream
 	zs.open( ios, 1 << 16, 10, zstream::fwio , Z_DEFAULT_COMPRESSION );
 	// write to the stream
