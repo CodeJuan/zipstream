@@ -31,11 +31,13 @@ public:
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
 	// constructor 2
 	zstream( std::iostream &ios,
+		zconf::uint32 size,
 		zconf::uint64 offset = 0,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
 	// destructor
 	virtual ~zstream( void );
+
 public:
 	// open from buffer
 	zstream &open( zconf::bytep data,
@@ -44,6 +46,7 @@ public:
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
 	// open from iostream
 	zstream &open( std::iostream &ios,
+		zconf::uint32 size,
 		zconf::uint64 offset = 0,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
@@ -54,10 +57,18 @@ public:
 	zstream &close( void );
 	// tell us if buffer is open
 	bool is_open( void ) const;
+
+public:
 	// read n bytes and allocate them on data
 	zstream &read( zconf::cbytep data, zconf::uint64 nbytes );
 	// write n bytes on data
 	zstream &write( zconf::cbytep data, zconf::uint64 nbytes );
+	// flush remaining data
+	zstream &flush( void );
+
+public:
+	// get error string
+	const std::string &error( void ) const;
 	// number of bytes treated since the opening
 	zconf::uint64 tcount( void ) const;
 	// data buffer offset
@@ -68,13 +79,9 @@ public:
 	zconf::uint32 flags( void ) const;
 	// end of zstream input
 	bool eof( void ) const;
-	// flash remaining data to write
-	zstream &flush( void );
-	// get error string
-	const std::string &error( void ) const;
 
 private:
-	//
+	// class core structure declaration
 	typedef struct core;
 	// internal core structure
 	core *_core;
