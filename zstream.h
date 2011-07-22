@@ -19,6 +19,24 @@
 
 #include "zconf.h"
 
+/**
+ * @author Víctor Egea Hernando, egea.hernando@gmail.com
+ *
+ * zstream allows you to compress & uncompress a stream using the
+ * DEFLATE algorithm through zlibm, but in a write & read
+ * the number of bytes you want fashion, so you not depend on
+ * how you should feed zlib to get the chunk of data you want, the
+ * data its required to zlib, stored and managed automatically
+ * <br /><br />
+ * zstream doen't offer you random access to the stream, this
+ * must be sequential, so it doesn't offer you 'seekp' or 'seekp'
+ * <br /><br />
+ * raw data compression is given with the 'fzip' flag up
+ * <br /><br />
+ * there are alternative in the boost libreary for example, but the
+ * idea of this system is to make something simple and not depend on
+ * any other external libraries but zlib.
+ */
 class zstream{
 
 public:
@@ -26,12 +44,14 @@ public:
 	zstream( void );
 	// constructor 1
 	zstream( zconf::bytep data,
-		zconf::uint32 size,
+		zconf::uint32 csize,
+		zconf::uint32 usize,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
 	// constructor 2
 	zstream( std::iostream &ios,
-		zconf::uint32 size,
+		zconf::uint32 csize,
+		zconf::uint32 usize,
 		zconf::uint64 offset = 0,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
@@ -41,12 +61,14 @@ public:
 public:
 	// open from buffer
 	zstream &open( zconf::bytep data,
-		zconf::uint32 size,
+		zconf::uint32 csize,
+		zconf::uint32 usize,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
 	// open from iostream
 	zstream &open( std::iostream &ios,
-		zconf::uint32 size,
+		zconf::uint32 csize,
+		zconf::uint32 usize,
 		zconf::uint64 offset = 0,
 		zconf::uint32 flags = frio,
 		zconf::int32 level = Z_DEFAULT_COMPRESSION );
@@ -94,10 +116,11 @@ private:
 
 public:
 	// class flags
-	static const zconf::uint32 frio = 0x01; // read
-	static const zconf::uint32 fwio = 0x02; // write
-	static const zconf::uint32 feof = 0x04; // end of buffer
-	static const zconf::uint32 ferr = 0x08; // error happened
+	static const zconf::uint32 frio    = 0x01; // read
+	static const zconf::uint32 fwio    = 0x02; // write
+	static const zconf::uint32 feof    = 0x04; // end of buffer
+	static const zconf::uint32 ferr    = 0x08; // error happened
+	static const zconf::uint32 fzip    = 0x10; // zip entry stream
 
 };
 
