@@ -14,31 +14,43 @@
 * along with Zipstream.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ZCONF_H_
-#define ZCONF_H_
+#ifndef ZIPPY_H_
+#define ZIPPY_H_
 
-#include <iostream>
-#include <zlib/zlib.h>
+#include "ziparchive.h"
+#include "zstream.h"
 
-// default buffer sizes
-#define ZCOBSIZE ( ( 1 << 20 )      ) // 1.0 MB
-#define ZCIBSIZE ( ( 1 << 10 ) << 7 ) // 128 KB
+#include <fstream>
 
-namespace zconf {
+class zippy{
 
-// pointers and data
-typedef char               byte;
-typedef byte*              bytep;
-typedef const bytep        cbytep;
+private:
+    // instance
+    static zippy *_instance;
 
-// integer types
-typedef   signed short int  int16;
-typedef unsigned short int uint16;
-typedef   signed       int  int32;
-typedef unsigned       int uint32;
-typedef   signed long  int  int64;
-typedef unsigned long  int uint64;
+public:
+    // get instance
+    static zippy &get();
+	// main entry
+	int main( int argc, char *argv[] );
+	// extract entry to stdout
+	void extract_entry( const std::string &entrystr );
 
-}; // namespace zconf
+public:
+	// destructor
+	virtual ~zippy();
 
-#endif // ZCONF_H_
+private:
+	zippy( void );
+    // print options
+    void print_usage( void );
+
+private:
+    // archivo zip
+	ziparchive zip;
+	// create buffer
+	zconf::bytep _data;
+
+};
+
+#endif //ZIPPY_H_
