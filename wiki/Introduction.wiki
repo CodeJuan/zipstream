@@ -5,13 +5,9 @@
 Zipstream aims to provide and easy way to access ZIP files along with zlib in a C++ object oriented style to allow you - well, me also - to integrate ZIP files into 
 your application as you were accessing a normal file.
 
-You know, because there is a lot of advantages of using a compression system with random access as a virtual drive for your apps'.
+There is a lot of advantages of using a compression system with random access as a virtual drive for your apps'.
 
-1) The first step is to create a zlib wrapper, and it's almost done. 
-
-2) Then I'll have to write one, two or three classes to access the ZIP files, but take it easy. You could help!!
-
-3) Documentation is necessary.
+*) It's not done yet. Documentation is necessary.
 
 [UPDATED]
 An example of usage of ziparchive:
