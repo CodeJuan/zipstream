@@ -11,7 +11,7 @@ There is a lot of advantages of using a compression system with random access as
 
 *Documentation is necessary.*
 
-[UPDATED]
+UPDATED
 An example of usage of ziparchive:
 
 zippy.h
@@ -246,7 +246,7 @@ int main( int argc, char *argv[] ){
 }
 }}}
 
-[DEPRECATED]
+DEPRECATED
 
 This is an easy example of zstream usage:
 
