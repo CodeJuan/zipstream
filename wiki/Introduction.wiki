@@ -7,8 +7,8 @@ your application as you were accessing a normal file.
 
 There is a lot of advantages of using a compression system with random access as a virtual drive for your apps'.
 
-*It's not done yet. 
-*Documentation is necessary.
+*It's not done yet.*
+*Documentation is necessary.*
 
 [UPDATED]
 An example of usage of ziparchive:
